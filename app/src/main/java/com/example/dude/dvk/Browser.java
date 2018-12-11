@@ -1,4 +1,4 @@
-package com.example.dude.androapp;
+package com.example.dude.dvk;
 
 import android.app.Activity;
 import android.content.ClipData;
@@ -138,4 +138,6 @@ public abstract class Browser extends WebChromeClient {
     public boolean onJsBeforeUnload(WebView view, String url, String message, JsResult result) {
         return super.onJsBeforeUnload(view, url, message, result);
     }
+
+
 }

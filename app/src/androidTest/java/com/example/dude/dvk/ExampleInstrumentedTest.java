@@ -1,4 +1,4 @@
-package com.example.dude.androapp;
+package com.example.dude.dvk;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

@@ -1,4 +1,4 @@
-package com.example.dude.androapp;
+package com.example.dude.dvk;
 
 import org.junit.Test;
 
