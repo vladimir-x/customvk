@@ -131,6 +131,16 @@ public class MainActivity extends AppCompatActivity {
         //webView.loadUrl("https://google.com");
     }
 
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()){
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
+        // your code.
+    }
+
 
     private static boolean catchIt = false;
 
