@@ -1,8 +1,11 @@
 package com.example.dude.dvk;
 
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.View;
 import android.webkit.*;
 
@@ -13,6 +16,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -21,6 +27,8 @@ public class MainActivity extends AppCompatActivity {
     Browser webClient;
 
     HashMap<String, byte[]> cache = new HashMap<>();
+
+    CookieManager manager = CookieManager.getInstance();
 
 
     @Override
@@ -33,16 +41,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(com.example.dude.dvk.R.layout.activity_main);
+        setContentView(R.layout.activity_main);
 
-        android.support.v7.app.ActionBar actionBar = getSupportActionBar();
+        ActionBar actionBar = getSupportActionBar();
         actionBar.hide();
 
-        webView = (WebView) findViewById(com.example.dude.dvk.R.id.mainweb);
+        webView = (WebView) findViewById(R.id.mainweb);
         webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         webView.getSettings().setJavaScriptEnabled(true);
         //  webView.getSettings().setPluginState(WebSettings.PluginState.ON);
-
 
         webClient = new Browser() {
             @Override
@@ -53,82 +60,138 @@ public class MainActivity extends AppCompatActivity {
         };
         webView.setWebChromeClient(webClient);
 
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 view.loadUrl(url);
-                return false;
+                return true;
             }
 
 
-            //@Override
-            public WebResourceResponse __shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 try {
 
+
                     String urlStr = request.getUrl().toString();
-                    /*
-                    if (urlStr.contains(".css?") || urlStr.contains(".js?") || urlStr.contains(".jpg?")) {
-                        if (cache.containsKey(urlStr)) {
-                            return new WebResourceResponse("text/html", "UTF-8", new ByteArrayInputStream(cache.get(urlStr)));
+
+                    //if(urlStr.contains(".js") ) { System.out.println(">> !!!!!!!!!!!!!!!!!!!! " + urlStr); }
+
+                    if (urlStr.contains("common.js")) {
+
+                        URL url = new URL(urlStr);
+
+                        HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
+                        //urlConnection.setDoOutput(true);
+
+
+                        for (String k : request.getRequestHeaders().keySet()) {
+                            urlConnection.setRequestProperty(k, request.getRequestHeaders().get(k));
                         }
-                    }*/
-                    URL url = new URL(urlStr);
 
-                    HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
+                        urlConnection.setRequestMethod(request.getMethod());
 
+                        if (!cache.containsKey(urlStr)){
 
-                    CookieManager cookieManager = CookieManager.getInstance();
-                    urlConnection.setDoOutput(true);
+                            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                            String jsContent = readIS(in);
 
-
-                    for (String k : request.getRequestHeaders().keySet()) {
-                        urlConnection.setRequestProperty(k, request.getRequestHeaders().get(k));
-                    }
-
-                    //urlConnection.setRequestProperty("CRM_USER_AGENT", "crm_app");
-                    urlConnection.setRequestMethod(request.getMethod());
-
-                    InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-
-
-                    // data = new java.util.Scanner(in).useDelimiter("\\A").next();
-
-                    // System.out.println("Data:" + data);
-
-
-                    String ct = urlConnection.getContentType();
-                    String ce = urlConnection.getContentEncoding();
-
-                    urlConnection.disconnect();
-/*
-                    if (urlStr.contains(".css?") || urlStr.contains(".js?") || urlStr.contains(".jpg?")) {
-
-                        InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                        cache.put(urlStr,)
-                        if (cache.containsKey(urlStr)) {
-                            return new WebResourceResponse("text/html", "UTF-8", new ByteArrayInputStream(cache.get(urlStr)));
+                            cache.put(urlStr,patchCommonJs_flag_subscribe2(jsContent).getBytes());
                         }
-                    }*/
 
-                    if (catchIt) {
-                        catchIt = false;
-                        String cr = readIS(in);
-                        System.out.println(cr);
-                        in = new ByteArrayInputStream(cr.getBytes());
+
+                        String ct = urlConnection.getContentType();
+                        String ce = urlConnection.getContentEncoding();
+
+                        return new WebResourceResponse(ct, ce, new ByteArrayInputStream(cache.get(urlStr)));
                     }
-                    return new WebResourceResponse(ct, ce, in);
 
                 } catch (Exception e) {
                     e.printStackTrace();
-
-                    return super.shouldInterceptRequest(view, request);
                 }
+
+                return super.shouldInterceptRequest(view, request);
             }
 
         });
         webView.loadUrl("https://m.vk.com");
 
-        //webView.loadUrl("https://google.com");
+
+        /*
+        // таймер для отладки
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                String c = manager.getCookie("m.vk.com");
+                int st = c.indexOf("remixaudio_background_play_time_=");
+                System.out.println(">> control:"  + c.substring(st));
+
+
+            }
+        }, 2000, 3000);
+        */
+
+
+
+    }
+
+    /**
+     * В функцию инициализации плеера подставляет true вместо  "window.audioSubscribe"
+     *
+     * Время remixaudio_background_play_time_ не тикает. Треки не паузятся.
+     * @param input
+     * @return
+     */
+    public String patchCommonJs_flag_subscribe2(String input){
+
+        int marker = input.indexOf("remixaudio_background_play_time_");
+
+
+        int st_2 =   input.substring(0,marker).lastIndexOf("window.audioSubscribe");
+        int en = st_2 + "window.audioSubscribe".length();
+
+        String A = input.substring(0,st_2);
+        String B = input.substring(en);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(A);
+        sb.append("true");
+        sb.append(B);
+
+        return sb.toString();
+    }
+
+
+
+    /**
+     * Вырезает таймер.
+     * Время remixaudio_background_play_time_ не тикает. Треки не паузятся.
+     * @param input
+     * @return
+     */
+    public String patchCommonJs_cut_timer(String input){
+        int marker = input.indexOf("remixaudio_background_play_time_");
+
+        int start_f_1 = input.indexOf("onTick",marker);
+        int start_f_2 = input.indexOf("{",start_f_1);
+
+        int end_mark = input.indexOf("onEnd",start_f_1);
+
+        int end_f_1 =  end_mark;
+        while (input.charAt(end_f_1)!='}'){
+            end_f_1--;
+        }
+
+
+        String A = input.substring(0,start_f_2+1);
+        String B = input.substring(end_f_1);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(A);
+        sb.append(B);
+        return sb.toString();
+
     }
 
     @Override
@@ -142,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private static boolean catchIt = false;
+    private static boolean catchIt = true;
 
     public void butHello_Click(View v) {
 

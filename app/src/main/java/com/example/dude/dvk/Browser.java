@@ -37,7 +37,7 @@ public abstract class Browser extends WebChromeClient {
     }
 
     @Override
-    public boolean onShowFileChooser(WebView mWebView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+    public boolean onShowFileChooser(WebView mWebView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
         mUploadMessages = filePathCallback;
         openImageChooser();
         return true;
