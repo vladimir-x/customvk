@@ -1,6 +1,9 @@
 apply plugin: 'com.android.application'
 
 android {
+    dataBinding {
+        enabled = true
+    }
     signingConfigs {
         debug {
             storeFile file('/home/dude/projects/customvk/keys/vk.keystore')

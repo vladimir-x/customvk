@@ -5,7 +5,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.View;
 import android.webkit.*;
 
@@ -26,9 +25,12 @@ public class MainActivity extends AppCompatActivity {
 
     Browser webClient;
 
-    HashMap<String, byte[]> cache = new HashMap<>();
+    public static final HashMap<String, byte[]> cache = new HashMap<>();
 
     CookieManager manager = CookieManager.getInstance();
+
+
+    public static final State state = new State();
 
 
     @Override
@@ -97,18 +99,23 @@ public class MainActivity extends AppCompatActivity {
                             InputStream in = new BufferedInputStream(urlConnection.getInputStream());
                             String jsContent = readIS(in);
 
-                            cache.put(urlStr,patchCommonJs_flag_subscribe2(jsContent).getBytes());
+                            state.setPatchMode("cut_timer");
+                            cache.put(urlStr,patchCommonJs_cut_timer(jsContent).getBytes());
+                            state.setCashedJsCount(String.valueOf(cache.size()));
                         }
 
 
                         String ct = urlConnection.getContentType();
                         String ce = urlConnection.getContentEncoding();
 
-                        return new WebResourceResponse(ct, ce, new ByteArrayInputStream(cache.get(urlStr)));
+                        WebResourceResponse res = new WebResourceResponse(ct, ce, new ByteArrayInputStream(cache.get(urlStr)));
+                        state.setPatchFlag("PATCHED!");
+                        return res;
                     }
 
                 } catch (Exception e) {
                     e.printStackTrace();
+                    state.setPatchFlag("ERROR!");
                 }
 
                 return super.shouldInterceptRequest(view, request);
@@ -118,22 +125,29 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl("https://m.vk.com");
 
 
-        /*
+
         // таймер для отладки
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-                String c = manager.getCookie("m.vk.com");
-                int st = c.indexOf("remixaudio_background_play_time_=");
-                System.out.println(">> control:"  + c.substring(st));
-
-
+                state.setPlayTime(find(manager.getCookie("m.vk.com"),"remixaudio_background_play_time_=",";"));
+                //System.out.println(">> control:"  + state.getPlayTime());
             }
         }, 2000, 3000);
-        */
+
+    }
 
 
+    private String find(String source, String beforeStr,String end){
+        int st = source.indexOf(beforeStr);
+        if (st<0) return "";
+        st += beforeStr.length();
 
+        int en = source.indexOf(end, st);
+
+        if (en<0) return source.substring(st);
+
+        return source.substring(st,en);
     }
 
     /**
@@ -201,20 +215,10 @@ public class MainActivity extends AppCompatActivity {
         } else {
             super.onBackPressed();
         }
-        // your code.
     }
 
-
-    private static boolean catchIt = true;
-
-    public void butHello_Click(View v) {
-
-        catchIt = true;
-        webView.loadUrl("https://vk.com/al_audio.php?act=section&al=1&is_layer=0&owner_id=75615781&section=all");
-
-
-        //Intent myIntent = new Intent(this, MusicList.class);
-        //startActivity(myIntent);
+    public void infoClick(View v) {
+        startActivity(new Intent(this, InfoActivity.class));
     }
 
 
